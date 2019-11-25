@@ -1,10 +1,6 @@
-
-use ress::prelude::RegEx;
-use std::{
-    iter::Peekable,
-    str::Chars,
-};
 use log::trace;
+use ress::prelude::RegEx;
+use std::{iter::Peekable, str::Chars};
 
 #[derive(Debug)]
 pub struct Error {
@@ -16,6 +12,8 @@ impl std::fmt::Display for Error {
         write!(f, "{} at {}", self.msg, self.idx)
     }
 }
+
+impl std::error::Error for Error {}
 
 impl Error {
     fn new(idx: usize, msg: &str) -> Self {
@@ -38,7 +36,10 @@ impl<'a> RegexParser<'a> {
     pub fn new(js: &'a str) -> Result<Self, Error> {
         trace!("new parser: {:?}", js);
         if !js.starts_with('/') {
-            return Err(Error::new(0, "regular expression literals must start with a /"))
+            return Err(Error::new(
+                0,
+                "regular expression literals must start with a /",
+            ));
         }
         let pat_end_idx = if let Some(end_idx) = js.rfind('/') {
             if end_idx == 0 {
@@ -100,7 +101,7 @@ impl<'a> RegexParser<'a> {
             if self.eat(')') {
                 return Err(Error::new(self.state.pos, "Unmatched `)`"));
             }
-            if self.eat('[') {
+            if self.eat('[') || self.eat('}') {
                 return Err(Error::new(self.state.pos, "Lone quantifier brackets"));
             }
         }
@@ -109,7 +110,10 @@ impl<'a> RegexParser<'a> {
         }
         for name in &self.state.back_ref_names {
             if !self.state.group_names.contains(name) {
-                return Err(Error::new(self.state.pos, "Invalid named capture referenced"));
+                return Err(Error::new(
+                    self.state.pos,
+                    "Invalid named capture referenced",
+                ));
             }
         }
         Ok(())
@@ -132,9 +136,7 @@ impl<'a> RegexParser<'a> {
 
     fn alternative(&mut self) -> Result<(), Error> {
         trace!("alternative");
-        while self.state.pos < self.state.len && self.eat_term()? {
-
-        }
+        while self.state.pos < self.state.len && self.eat_term()? {}
         Ok(())
     }
 
@@ -162,16 +164,20 @@ impl<'a> RegexParser<'a> {
         let start = self.state.pos;
         if self.eat('{') {
             if self.eat_digits(10) {
+
                 let min = self.state.last_int_value;
-                let max = if self.eat(',') && self.eat_digits(10) { 
-                    Some(self.state.last_int_value) 
-                } else { 
-                    None 
+                let max = if self.eat(',') && self.eat_digits(10) {
+                    self.state.last_int_value
+                } else {
+                    None
                 };
                 if self.eat('}') {
-                    if let Some(max) = max {
+                    if let (Some(max), Some(min)) = (max, min) {
                         if max < min && !no_error {
-                            return Err(Error::new(self.state.pos, &format!("numbers out of order in {{{},{}}}", min, max)));
+                            return Err(Error::new(
+                                self.state.pos,
+                                &format!("numbers out of order in {{{},{}}}", min, max),
+                            ));
                         }
                     }
                     return Ok(true);
@@ -211,18 +217,18 @@ impl<'a> RegexParser<'a> {
         let ret = self.eat_pattern_characters()
             || self.eat('.')
             || self.eat_reverse_solidus_atom_escape()?
-            || self.eat_character_class()
-            || self.eat_uncapturing_group()
-            || self.eat_capturing_group();
+            || self.eat_character_class()?
+            || self.eat_uncapturing_group()?
+            || self.eat_capturing_group()?;
         Ok(ret)
     }
 
     fn eat_extended_atom(&mut self) -> Result<bool, Error> {
         let ret = self.eat('.')
             || self.eat_reverse_solidus_atom_escape()?
-            || self.eat_character_class()
-            || self.eat_uncapturing_group()
-            || self.eat_capturing_group()
+            || self.eat_character_class()?
+            || self.eat_uncapturing_group()?
+            || self.eat_capturing_group()?
             || self.eat_invalid_braced_quantifier()?
             || self.eat_extended_pattern_character();
         Ok(ret)
@@ -237,19 +243,21 @@ impl<'a> RegexParser<'a> {
 
     fn eat_extended_pattern_character(&mut self) -> bool {
         if let Some(ch) = self.chars.peek() {
-            if *ch != '$' && !(*ch >= '(' && *ch <= '+')
+            if *ch != '$'
+                && !(*ch >= '(' && *ch <= '+')
                 && *ch != '.'
                 && *ch != '?'
                 && *ch != '['
                 && *ch != '^'
-                && *ch != '|' {
-                    self.advance();
-                    return true
-                }
+                && *ch != '|'
+            {
+                self.advance();
+                return true;
+            }
         }
         false
     }
-    
+
     fn eat_pattern_characters(&mut self) -> bool {
         let start = self.state.pos;
         while let Some(next) = self.chars.peek() {
@@ -262,11 +270,11 @@ impl<'a> RegexParser<'a> {
 
     fn is_syntax_ch(ch: char) -> bool {
         ch == '$'
-        || ch >= '(' && ch <= '+'
-        || ch == '.'
-        || ch == '?'
-        || ch >= '[' && ch <= ']'
-        || ch >= '{' && ch <= '}'
+            || ch >= '(' && ch <= '+'
+            || ch == '.'
+            || ch == '?'
+            || ch >= '[' && ch <= ']'
+            || ch >= '{' && ch <= '}'
     }
 
     fn eat_reverse_solidus_atom_escape(&mut self) -> Result<bool, Error> {
@@ -283,8 +291,9 @@ impl<'a> RegexParser<'a> {
     fn eat_atom_escape(&mut self) -> Result<bool, Error> {
         if self.eat_back_ref()
             || self.eat_character_class_escape()?
-            || self.eat_character_escape()
-            || self.state.n && self.eat_k_group_name() {
+            || self.eat_character_escape()?
+            || self.state.n && self.eat_k_group_name()?
+        {
             return Ok(true);
         }
         if self.state.u {
@@ -301,7 +310,11 @@ impl<'a> RegexParser<'a> {
     fn eat_back_ref(&mut self) -> bool {
         let start = self.state.pos;
         if self.eat_decimal_escape() {
-            let n = self.state.last_int_value;
+            let n = if let Some(n) = self.state.last_int_value {
+                n
+            } else {
+                return true;
+            };
             if self.state.u {
                 if n > self.state.max_back_refs {
                     self.state.max_back_refs = n;
@@ -317,23 +330,25 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_decimal_escape(&mut self) -> bool {
-        self.state.last_int_value = 0;
+        self.state.last_int_value = Some(0);
         if let Some(next) = self.chars.peek() {
             if *next >= '1' && *next <= '9' {
                 let n: u32 = (*next).into();
-                self.state.last_int_value = 10 * self.state.last_int_value + n;
+                let last_int_value = self.state.last_int_value.unwrap_or(0);
+                self.state.last_int_value = Some(10 * last_int_value + n);
                 self.advance();
                 while let Some(next) = self.chars.peek() {
                     if *next >= '1' && *next <= '9' {
                         let n: u32 = (*next).into();
-                        self.state.last_int_value = 10 * self.state.last_int_value + n;
+                        let last_int_value = self.state.last_int_value.unwrap_or(0);
+                        self.state.last_int_value = Some(10 * last_int_value + n);
                         self.advance();
                     } else {
                         break;
                     }
                 }
             }
-            return true
+            return true;
         }
         false
     }
@@ -341,52 +356,533 @@ impl<'a> RegexParser<'a> {
     fn eat_character_class_escape(&mut self) -> Result<bool, Error> {
         if let Some(next) = self.chars.peek() {
             if Self::is_character_class_escape(*next) {
-                self.state.last_int_value = 0;
+                self.state.last_int_value = None;
                 self.advance();
                 return Ok(true);
             }
             if self.state.u && (*next == 'P' || *next == 'p') {
-                self.state.last_int_value = 0;
+                self.state.last_int_value = None;
                 self.advance();
-                if self.eat('{') && self.eat_unicode_property_value_expression() && self.eat('}') {
+                if self.eat('{') && self.eat_unicode_property_value_expression()? && self.eat('}') {
                     return Ok(true);
                 }
+                return Err(Error::new(self.state.pos, "Invalid property name"));
             }
         }
-        Err(Error::new(self.state.pos, "Invalid property name"))
+        Ok(false)
     }
 
-    fn eat_unicode_property_value_expression(&mut self) -> bool {
-        unimplemented!()
+    fn eat_unicode_property_value_expression(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat_unicode_property_name() && self.eat('=') {
+            let name = self.state.last_string_value.clone();
+            if self.eat_unicode_property_value() {
+                self.validate_unicode_property_name_and_value(
+                    &name,
+                    &self.state.last_string_value,
+                )?;
+                return Ok(true);
+            }
+        }
+        self.reset_to(start);
+        if self.eat_lone_unicode_property_name_or_value() {
+            self.validate_unicode_property_name_or_value(&self.state.last_string_value)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn eat_unicode_property_name(&mut self) -> bool {
+        let start = self.state.pos;
+        self.state.last_string_value = None;
+        while let Some(ch) = self.chars.peek() {
+            if Self::is_unicode_property_name_character(*ch) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        if self.state.pos != start {
+            self.state.last_string_value = self.pattern.get(start..self.state.pos)
+        }
+        self.state.last_string_value.is_some()
+    }
+
+    fn eat_unicode_property_value(&mut self) -> bool {
+        let start = self.state.pos;
+        while let Some(next) = self.chars.peek() {
+            if Self::is_unicode_property_value_character(*next) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        if start != self.state.pos {
+            self.state.last_string_value = self.pattern.get(start..self.state.pos);
+        }
+        self.state.last_string_value.is_some()
+    }
+
+    fn eat_lone_unicode_property_name_or_value(&mut self) -> bool {
+        self.eat_unicode_property_value()
+    }
+
+    fn validate_unicode_property_name_and_value(
+        &self,
+        name: &Option<&'a str>,
+        value: &Option<&'a str>,
+    ) -> Result<(), Error> {
+        Err(
+            Error {
+                idx: self.state.pos,
+                msg: format!("Unable to validate unicode property name and value ({:?} and {:?}), this is not yet implemented", name, value),
+            }
+        )
+    }
+    
+    fn validate_unicode_property_name_or_value(
+        &self,
+        name_or_value: &Option<&'a str>,
+    ) -> Result<(), Error> {
+        Err(
+            Error {
+                idx: self.state.pos,
+                msg: format!("Unable to validate unicode property name or value ({:?}), this is not yet implemented", name_or_value),
+            }
+        )
+    }
+
+    fn is_unicode_property_name_character(ch: char) -> bool {
+        Self::is_control_letter(ch) || ch == '_'
+    }
+
+    fn is_unicode_property_value_character(ch: char) -> bool {
+        Self::is_unicode_property_name_character(ch) || ch.is_digit(10)
+    }
+
+    fn is_control_letter(ch: char) -> bool {
+        (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
     }
 
     fn is_character_class_escape(ch: char) -> bool {
-        ch == 'd'
-        || ch == 'D'
-        || ch == 's'
-        || ch == 'S'
-        || ch == 'w'
-        || ch == 'W'
+        ch == 'd' || ch == 'D' || ch == 's' || ch == 'S' || ch == 'w' || ch == 'W'
     }
 
-    fn eat_character_escape(&mut self) -> bool {
-        unimplemented!()
+    fn eat_character_escape(&mut self) -> Result<bool, Error> {
+        let ret = self.eat_control_escape()
+        || self.eat_c_control_letter()
+        || self.eat_zero()
+        || self.eat_hex_escape_sequence()?
+        || self.eat_regex_unicode_escape_sequence()?
+        || (!self.state.u && self.eat_legacy_octal_escape_sequence())
+        || self.eat_identity_escape();
+        Ok(ret)
     }
 
-    fn eat_character_class(&mut self) -> bool {
-        unimplemented!()
+    fn eat_control_escape(&mut self) -> bool {
+        if let Some(ch) = self.chars.peek() {
+            match ch {
+                't' | 'n' | 'v' | 'f' | 'r' => {
+                    self.state.last_int_value = Some((*ch).into());
+                    self.advance();
+                    return true;
+                }
+                _ => return false,
+            }
+        }
+        false
     }
 
-    fn eat_k_group_name(&mut self) -> bool {
-        unimplemented!()
+    fn eat_c_control_letter(&mut self) -> bool {
+        let start = self.state.pos;
+        if self.eat('c') {
+            if self.eat_control_letter() {
+                return true;
+            }
+            self.reset_to(start);
+        }
+        false
     }
 
-    fn eat_uncapturing_group(&mut self) -> bool {
-        unimplemented!()
+    fn eat_control_letter(&mut self) -> bool {
+        if let Some(next) = self.chars.peek() {
+            if Self::is_control_letter(*next) {
+                let n: u32 = (*next).into();
+                self.state.last_int_value = Some(n % 0x20);
+                self.advance();
+                return true;
+            }
+        }
+        false
     }
 
-    fn eat_capturing_group(&mut self) -> bool {
-        unimplemented!()
+    fn eat_zero(&mut self) -> bool {
+        if let Some(zero) = self.chars.peek() {
+            if *zero == '0' {
+                self.state.last_int_value = Some(0);
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
+    fn eat_hex_escape_sequence(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat('x') {
+            if self.eat_fixed_hex_digits(2) {
+                return Ok(true);
+            }
+            if self.state.u {
+                return Err(Error::new(start, "Invalid escape"))
+            }
+            self.reset_to(start)
+        }
+        Ok(false)
+    }
+
+    fn eat_fixed_hex_digits(&mut self, len: usize) -> bool {
+        let start = self.state.pos;
+        self.state.last_int_value = Some(0);
+        for _ in 0..len {
+            if let Some(n) = self.eat_digit(16) {
+                let last_int_value = self.state.last_int_value.unwrap_or(0);
+                self.state.last_int_value = Some(16 * last_int_value + n);
+            } else {
+                self.reset_to(start);
+                return false;
+            }
+        }
+        true
+    }
+
+    fn eat_legacy_octal_escape_sequence(&mut self) -> bool {
+        let mut last_int_value = 0;
+        if let Some(n1) = self.eat_digit(8) {
+            if let Some(n2) = self.eat_digit(8) {
+                if n1 <= 3 {
+                    if let Some(n3) = self.eat_digit(8) {
+                        last_int_value = n1 * 64 + n2 * 8 + n3;
+                    } else {
+                        last_int_value = n1 * 8 + n2;
+                    }
+                } else {
+                    last_int_value = n1 * 8 + n2;
+                }
+            } else {
+                last_int_value = n1;
+            }
+            self.state.last_int_value = Some(last_int_value);
+            return true;
+        }
+        false
+    }
+    fn eat_digit(&mut self, radix: u32) -> Option<u32> {
+        if let Some(next) = self.chars.peek() {
+            if next.is_digit(radix) {
+                let n = next.to_digit(radix);
+                self.advance();
+                return n
+            }
+        }
+        None
+    }
+    fn eat_identity_escape(&mut self) -> bool {
+        if self.state.u {
+            if self.eat_syntax_character() {
+                return true;
+            }
+            if self.eat('/') {
+                self.state.last_int_value = Some(0x2f);
+                return true;
+            }
+        }
+        false
+    }
+    fn eat_syntax_character(&mut self) -> bool {
+        if let Some(ch) = self.chars.peek() {
+            if Self::is_syntax_ch(*ch) {
+                self.state.last_int_value = Some((*ch).into());
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
+
+    fn eat_regex_unicode_escape_sequence(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat('u') {
+            if self.eat_fixed_hex_digits(4) {
+                let lead = self.state.last_int_value.unwrap_or(0);
+                if self.state.u && lead >= 0xD800 && lead <= 0xDBFF {
+                    let lead_end = self.state.pos;
+                    if self.eat('\\') && self.eat('u') && self.eat_fixed_hex_digits(4) {
+                        let tail = self.state.last_int_value.unwrap_or(0);
+                        if tail >= 0xDC00
+                        && tail <= 0xDFFF {
+                            self.state.last_int_value = Some((lead - 0xD800) * 0x400 + (tail - 0xDC00) + 0x10000);
+                            return Ok(true);
+                        }
+                    }
+                    self.reset_to(lead_end);
+                    self.state.last_int_value = Some(lead);
+                }
+                return Ok(true);
+            }
+            if self.state.u 
+                && self.eat('{')
+                && self.eat_digits(16)
+                && self.eat('}')
+                && self.state.last_int_value.map(|v| v <= 0x10FFFF).unwrap_or(true) {
+                return Ok(true);
+            }
+
+            if self.state.u {
+                return Err(Error::new(self.state.pos, "Invalid unicode escape"));
+            }
+
+            self.reset_to(start)
+        }
+        Ok(false)
+    }
+   
+    fn eat_character_class(&mut self) -> Result<bool, Error> {
+        if self.eat('[') {
+            self.eat('^');
+            self.class_ranges()?;
+            if self.eat(']') {
+                Ok(true)
+            } else {
+                Err(Error::new(self.state.pos, "Unterminated character class"))
+            }
+            
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn class_ranges(&mut self) -> Result<(), Error> {
+        while self.eat_class_atom()? {
+            let left = self.state.last_int_value;
+            if self.eat('-') && self.eat_class_atom()? {
+                let right = self.state.last_int_value;
+                if self.state.u && (left.is_none() || right.is_none()) {
+                    return Err(Error::new(self.state.pos, "Invalid character class"))
+                }
+                if let (Some(left), Some(right)) = (left, right) {
+                    if left > right {
+                        return Err(Error::new(self.state.pos, &format!("Rage out of order in character class ({} > {})", left, right)));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn eat_class_atom(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat('\\') {
+            if self.eat_class_escape()? {
+                return Ok(true)
+            }
+            if self.state.u {
+                if let Some(ch) = self.chars.peek() {
+                    if *ch == 'c' || ch.is_digit(8) {
+                        return Err(Error::new(self.state.pos, "Invalid class escape"));
+                    }
+                    return Err(Error::new(self.state.pos, "Invalid escape"));
+                }
+            }
+            self.reset_to(start);
+        }
+        if let Some(ch) = self.chars.peek() {
+            if *ch != ']' {
+                self.state.last_int_value = Some((*ch).into());
+                self.advance();
+                return Ok(true)
+            }
+        }
+        Ok(false)
+    }
+
+    fn eat_class_escape(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat('b') {
+            self.state.last_int_value = Some(0x08);
+            return Ok(true);
+        }
+        if self.state.u && self.eat('-') {
+            self.state.last_int_value = Some(0x2D);
+            return Ok(true);
+        }
+        if self.state.u && self.eat('c') {
+            if self.eat_class_control_letter() {
+                return Ok(true);
+            }
+            self.reset_to(start);
+        }
+        let ret = self.eat_character_class_escape()?
+            || self.eat_character_escape()?;
+        Ok(ret)
+    }
+
+    fn eat_class_control_letter(&mut self) -> bool {
+        if let Some(ch) = self.chars.peek() {
+            if ch.is_digit(10) || *ch == '_' {
+                let n: u32 = (*ch).into();
+                self.state.last_int_value = Some(n % 0x20);
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
+
+    fn eat_k_group_name(&mut self) -> Result<bool, Error> {
+        if self.eat('k') {
+            if self.eat_group_name()? {
+                if let Some(name) = self.state.last_string_value {
+                    self.state.back_ref_names.push(name.clone());
+                    return Ok(true);
+                }
+            }   
+            return Err(Error::new(self.state.pos, "Invalid named reference"));
+        }
+        Ok(false)
+    }
+
+    fn eat_group_name(&mut self) -> Result<bool, Error> {
+        self.state.last_string_value = None;
+        if self.eat('<') {
+            if self.eat_regex_identifier_name()? && self.eat('>') {
+                return Ok(true);
+            }
+            return Err(Error::new(self.state.pos, "Invalid capture group name"));
+        }
+        Ok(false)
+    }
+
+    fn eat_regex_identifier_name(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        self.state.last_string_value = None;
+        if self.eat_ident_start()? {
+            while self.eat_ident_part()? {
+
+            }
+            self.state.last_string_value = Some(&self.pattern[start..self.state.pos]);
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn eat_ident_start(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        self.state.last_string_value = None;
+        let mut ch = if let Some(ch) = self.chars.peek() {
+            *ch
+        } else {
+            return Ok(false);
+        };
+        self.advance();
+        if ch == '\\' && self.eat_regex_unicode_escape_sequence()? {
+            if let Some(n) = self.state.last_int_value {
+                if let Some(n) = std::char::from_u32(n) {
+                    ch = n;
+                }
+            }
+        }
+        if Self::is_id_start(ch) {
+            self.state.last_int_value = Some(ch.into());
+            return Ok(true)
+        }
+        self.reset_to(start);
+        Ok(false)
+    }
+
+    fn eat_ident_part(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        let mut ch = if let Some(ch) = self.chars.peek() {
+            *ch
+        } else {
+            return Ok(false);
+        };
+        self.advance();
+        if ch == '\\' && self.eat_regex_unicode_escape_sequence()? {
+            if let Some(n) = self.state.last_int_value {
+                if let Some(n) = std::char::from_u32(n) {
+                    ch = n;
+                }
+            }
+        }
+        if Self::is_id_continue(ch) {
+            self.state.last_int_value = Some(ch.into());
+            return Ok(true)
+        }
+        self.reset_to(start);
+        Ok(false)
+    }
+
+    fn is_id_start(ch: char) -> bool {
+        (ch >= 'A' && ch <= 'Z')
+        || (ch >= 'a' && ch <= 'z')
+        || ch == '$'
+        || ch == '_'
+        || unic_ucd_ident::is_id_start(ch)
+    }
+
+    fn is_id_continue(ch: char) -> bool {
+        (ch >= 'A' && ch <= 'Z')
+        || (ch >= 'a' && ch <= 'z')
+        || (ch >= '0' && ch <= '9')
+        || ch == '$'
+        || ch == '_'
+        || unic_ucd_ident::is_id_continue(ch)
+    }
+
+    fn eat_uncapturing_group(&mut self) -> Result<bool, Error> {
+        let start = self.state.pos;
+        if self.eat('(') {
+            if self.eat('?') && self.eat(':') {
+                self.disjunction()?;
+                if self.eat(')') {
+                    return Ok(true)
+                }
+                return Err(Error::new(start, "Unterminated group"));
+            }
+            self.reset_to(start)
+        }
+        Ok(false)
+    }
+
+    fn eat_capturing_group(&mut self) -> Result<bool, Error> {
+        if self.eat('(') {
+            self.group_specifier()?;
+            self.disjunction()?;
+            if self.eat(')') {
+                self.state.num_capturing_parens += 1;
+                Ok(true)
+            } else {
+                Err(Error::new(self.state.pos, "Unterminated group"))
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn group_specifier(&mut self) -> Result<(), Error> {
+        if self.eat('?') {
+            if self.eat_group_name()? {
+                if let Some(name) = self.state.last_string_value {
+                    if self.state.group_names.contains(&name) {
+                        return Err(Error::new(self.state.pos, "Duplicate capture group name"));
+                    } else {
+                        self.state.group_names.push(name.clone());
+                    }
+                }
+            }
+            return Err(Error::new(self.state.pos, "Invalid group"));
+        }
+        Ok(())
     }
 
     fn eat_assertion(&mut self) -> Result<bool, Error> {
@@ -413,6 +909,7 @@ impl<'a> RegexParser<'a> {
                 return Ok(true);
             }
         }
+        self.reset_to(start);
         Ok(false)
     }
 
@@ -420,9 +917,9 @@ impl<'a> RegexParser<'a> {
         trace!("eat_digits");
         let start = self.state.pos;
         while let Some(next) = self.chars.peek() {
-            if next.is_digit(radix) {
-                let n: u32 = (*next).into();
-                self.state.last_int_value = radix * self.state.last_int_value + n;
+            if let Some(n) = next.to_digit(radix) {
+                let last_int_value = self.state.last_int_value.unwrap_or(0);
+                self.state.last_int_value = Some(radix * last_int_value + n);
                 self.advance();
             } else {
                 break;
@@ -460,7 +957,7 @@ impl<'a> RegexParser<'a> {
 struct State<'a> {
     pos: usize,
     len: usize,
-    last_int_value: u32,
+    last_int_value: Option<u32>,
     last_string_value: Option<&'a str>,
     last_assert_is_quant: bool,
     num_capturing_parens: u32,
@@ -476,7 +973,7 @@ impl<'a> State<'a> {
         Self {
             pos: 0,
             len,
-            last_int_value: 0,
+            last_int_value: None,
             last_string_value: None,
             last_assert_is_quant: false,
             num_capturing_parens: 0,
@@ -489,7 +986,7 @@ impl<'a> State<'a> {
     }
     pub fn reset(&mut self) {
         self.pos = 0;
-        self.last_int_value = 0;
+        self.last_int_value = None;
         self.last_string_value = None;
         self.num_capturing_parens = 0;
         self.max_back_refs = 0;
