@@ -34,7 +34,6 @@ pub struct RegexParser<'a> {
 
 impl<'a> RegexParser<'a> {
     pub fn new(js: &'a str) -> Result<Self, Error> {
-        trace!("new parser: {:?}", js);
         if !js.starts_with('/') {
             return Err(Error::new(
                 0,
@@ -74,7 +73,7 @@ impl<'a> RegexParser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<RegEx<&'a str>, Error> {
-        trace!("parse");
+        trace!("parse {:?}", self.current(),);
         self.pattern()?;
         if !self.state.n && !self.state.group_names.is_empty() {
             self.pattern()?;
@@ -91,7 +90,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn pattern(&mut self) -> Result<(), Error> {
-        trace!("pattern");
+        trace!("pattern {:?}", self.current(),);
         if self.state.pos > 0 {
             self.chars = self.pattern.chars().peekable();
             self.state.reset();
@@ -120,7 +119,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn disjunction(&mut self) -> Result<(), Error> {
-        trace!("disjunction");
+        trace!("disjunction {:?}", self.current(),);
         self.alternative()?;
         while self.eat('|') {
             self.alternative()?;
@@ -135,13 +134,13 @@ impl<'a> RegexParser<'a> {
     }
 
     fn alternative(&mut self) -> Result<(), Error> {
-        trace!("alternative");
+        trace!("alternative {:?}", self.current(),);
         while self.state.pos < self.state.len && self.eat_term()? {}
         Ok(())
     }
 
     fn eat_quantifier(&mut self, no_error: bool) -> Result<bool, Error> {
-        trace!("eat_quantifier");
+        trace!("eat_quantifier {:?}", self.current(),);
         Ok(if self.eat_quantifier_prefix(no_error)? {
             self.eat('?');
             true
@@ -151,7 +150,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_quantifier_prefix(&mut self, no_error: bool) -> Result<bool, Error> {
-        trace!("eat_quantifier_prefix");
+        trace!("eat_quantifier_prefix {:?}", self.current(),);
         let ret = self.eat('*')
             || self.eat('+')
             || self.eat('?')
@@ -161,7 +160,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_braced_quantifier(&mut self, no_error: bool) -> Result<bool, Error> {
-        trace!("eat_braced_quantifier");
+        trace!("eat_braced_quantifier {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('{') {
             if self.eat_digits(10) {
@@ -192,7 +191,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_term(&mut self) -> Result<bool, Error> {
-        trace!("eat_term");
+        trace!("eat_term {:?}", self.current(),);
         if self.eat_assertion()? {
             if self.state.last_assert_is_quant && self.eat_quantifier(false)? {
                 if self.state.n {
@@ -214,7 +213,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_atom(&mut self) -> Result<bool, Error> {
-        trace!("eat_atom");
+        trace!("eat_atom {:?}", self.current(),);
         let ret = self.eat_pattern_characters()
             || self.eat('.')
             || self.eat_reverse_solidus_atom_escape()?
@@ -225,7 +224,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_extended_atom(&mut self) -> Result<bool, Error> {
-        trace!("eat_extended_atom");
+        trace!("eat_extended_atom {:?}", self.current(),);
         let ret = self.eat('.')
             || self.eat_reverse_solidus_atom_escape()?
             || self.eat_character_class()?
@@ -237,7 +236,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_invalid_braced_quantifier(&mut self) -> Result<bool, Error> {
-        trace!("eat_invalid_braced_quantifier");
+        trace!("eat_invalid_braced_quantifier {:?}", self.current(),);
         if self.eat_braced_quantifier(true)? {
             return Err(Error::new(self.state.pos, "Nothing to repeat"));
         }
@@ -245,7 +244,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_extended_pattern_character(&mut self) -> bool {
-        trace!("eat_extended_pattern_character");
+        trace!("eat_extended_pattern_character {:?}", self.current(),);
         if let Some(ch) = self.chars.peek() {
             if *ch != '$'
                 && !(*ch >= '(' && *ch <= '+')
@@ -263,7 +262,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_pattern_characters(&mut self) -> bool {
-        trace!("eat_pattern_characters");
+        trace!("eat_pattern_characters {:?}", self.current(),);
         let start = self.state.pos;
         while let Some(next) = self.chars.peek() {
             if !Self::is_syntax_ch(*next) {
@@ -274,7 +273,6 @@ impl<'a> RegexParser<'a> {
     }
 
     fn is_syntax_ch(ch: char) -> bool {
-        trace!("is_syntax_ch");
         ch == '$'
             || ch >= '(' && ch <= '+'
             || ch == '.'
@@ -284,7 +282,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_reverse_solidus_atom_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_reverse_solidus_atom_escape");
+        trace!("eat_reverse_solidus_atom_escape {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('\\') {
             if self.eat_atom_escape()? {
@@ -296,7 +294,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_atom_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_atom_escape");
+        trace!("eat_atom_escape {:?}", self.current(),);
         if self.eat_back_ref()
             || self.eat_character_class_escape()?
             || self.eat_character_escape()?
@@ -316,7 +314,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_back_ref(&mut self) -> bool {
-        trace!("eat_back_ref");
+        trace!("eat_back_ref {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat_decimal_escape() {
             let n = if let Some(n) = self.state.last_int_value {
@@ -339,7 +337,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_decimal_escape(&mut self) -> bool {
-        trace!("eat_decimal_escape");
+        trace!("eat_decimal_escape {:?}", self.current(),);
         self.state.last_int_value = Some(0);
         if let Some(next) = self.chars.peek() {
             if *next >= '1' && *next <= '9' {
@@ -357,14 +355,14 @@ impl<'a> RegexParser<'a> {
                         break;
                     }
                 }
+                return true;
             }
-            return true;
         }
         false
     }
 
     fn eat_character_class_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_character_class_escape");
+        trace!("eat_character_class_escape {:?}", self.current(),);
         if let Some(next) = self.chars.peek() {
             if Self::is_character_class_escape(*next) {
                 self.state.last_int_value = None;
@@ -384,7 +382,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_unicode_property_value_expression(&mut self) -> Result<bool, Error> {
-        trace!("eat_unicode_property_value_expression");
+        trace!("eat_unicode_property_value_expression {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat_unicode_property_name() && self.eat('=') {
             let name = self.state.last_string_value;
@@ -405,7 +403,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_unicode_property_name(&mut self) -> bool {
-        trace!("eat_unicode_property_name");
+        trace!("eat_unicode_property_name {:?}", self.current(),);
         let start = self.state.pos;
         self.state.last_string_value = None;
         while let Some(ch) = self.chars.peek() {
@@ -422,7 +420,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_unicode_property_value(&mut self) -> bool {
-        trace!("eat_unicode_property_value");
+        trace!("eat_unicode_property_value {:?}", self.current(),);
         let start = self.state.pos;
         while let Some(next) = self.chars.peek() {
             if Self::is_unicode_property_value_character(*next) {
@@ -438,7 +436,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_lone_unicode_property_name_or_value(&mut self) -> bool {
-        trace!("eat_lone_unicode_property_name_or_value");
+        trace!("eat_lone_unicode_property_name_or_value {:?}", self.current(),);
         self.eat_unicode_property_value()
     }
 
@@ -447,7 +445,6 @@ impl<'a> RegexParser<'a> {
         name: &Option<&'a str>,
         value: &Option<&'a str>,
     ) -> Result<(), Error> {
-        trace!("validate_unicode_property_name_and_value");
         Err(
             Error {
                 idx: self.state.pos,
@@ -460,7 +457,6 @@ impl<'a> RegexParser<'a> {
         &self,
         name_or_value: &Option<&'a str>,
     ) -> Result<(), Error> {
-        trace!("validate_unicode_property_name_or_value");
         Err(
             Error {
                 idx: self.state.pos,
@@ -470,27 +466,23 @@ impl<'a> RegexParser<'a> {
     }
 
     fn is_unicode_property_name_character(ch: char) -> bool {
-        trace!("is_unicode_property_name_character");
         Self::is_control_letter(ch) || ch == '_'
     }
 
     fn is_unicode_property_value_character(ch: char) -> bool {
-        trace!("is_unicode_property_value_character");
         Self::is_unicode_property_name_character(ch) || ch.is_digit(10)
     }
 
     fn is_control_letter(ch: char) -> bool {
-        trace!("is_control_letter");
         (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
     }
 
     fn is_character_class_escape(ch: char) -> bool {
-        trace!("is_character_class_escape");
         ch == 'd' || ch == 'D' || ch == 's' || ch == 'S' || ch == 'w' || ch == 'W'
     }
 
     fn eat_character_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_character_escape");
+        trace!("eat_character_escape {:?}", self.current(),);
         let ret = self.eat_control_escape()
             || self.eat_c_control_letter()
             || self.eat_zero()
@@ -501,8 +493,12 @@ impl<'a> RegexParser<'a> {
         Ok(ret)
     }
 
+    fn current(&mut self) -> Option<&char> {
+        self.chars.peek()
+    }
+
     fn eat_control_escape(&mut self) -> bool {
-        trace!("eat_control_escape");
+        trace!("eat_control_escape {:?}", self.current(),);
         if let Some(ch) = self.chars.peek() {
             match ch {
                 't' | 'n' | 'v' | 'f' | 'r' => {
@@ -517,7 +513,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_c_control_letter(&mut self) -> bool {
-        trace!("eat_c_control_letter");
+        trace!("eat_c_control_letter {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('c') {
             if self.eat_control_letter() {
@@ -529,7 +525,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_control_letter(&mut self) -> bool {
-        trace!("eat_control_letter");
+        trace!("eat_control_letter {:?}", self.current(),);
         if let Some(next) = self.chars.peek() {
             if Self::is_control_letter(*next) {
                 let n: u32 = (*next).into();
@@ -542,7 +538,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_zero(&mut self) -> bool {
-        trace!("eat_zero");
+        trace!("eat_zero {:?}", self.current(),);
         if let Some(zero) = self.chars.peek() {
             if *zero == '0' {
                 self.state.last_int_value = Some(0);
@@ -553,7 +549,7 @@ impl<'a> RegexParser<'a> {
         false
     }
     fn eat_hex_escape_sequence(&mut self) -> Result<bool, Error> {
-        trace!("eat_hex_escape_sequence");
+        trace!("eat_hex_escape_sequence {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('x') {
             if self.eat_fixed_hex_digits(2) {
@@ -568,7 +564,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_fixed_hex_digits(&mut self, len: usize) -> bool {
-        trace!("eat_fixed_hex_digits");
+        trace!("eat_fixed_hex_digits {:?}", self.current(),);
         let start = self.state.pos;
         self.state.last_int_value = Some(0);
         for _ in 0..len {
@@ -584,7 +580,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_legacy_octal_escape_sequence(&mut self) -> bool {
-        trace!("eat_legacy_octal_escape_sequence");
+        trace!("eat_legacy_octal_escape_sequence {:?}", self.current(),);
         let last_int_value;
         if let Some(n1) = self.eat_digit(8) {
             if let Some(n2) = self.eat_digit(8) {
@@ -606,7 +602,7 @@ impl<'a> RegexParser<'a> {
         false
     }
     fn eat_digit(&mut self, radix: u32) -> Option<u32> {
-        trace!("eat_digit");
+        trace!("eat_digit {:?}", self.current(),);
         if let Some(next) = self.chars.peek() {
             if next.is_digit(radix) {
                 let n = next.to_digit(radix);
@@ -617,7 +613,7 @@ impl<'a> RegexParser<'a> {
         None
     }
     fn eat_identity_escape(&mut self) -> bool {
-        trace!("eat_identity_escape");
+        trace!("eat_identity_escape {:?}", self.current(),);
         if self.state.u {
             if self.eat_syntax_character() {
                 return true;
@@ -641,7 +637,7 @@ impl<'a> RegexParser<'a> {
         }
     }
     fn eat_syntax_character(&mut self) -> bool {
-        trace!("eat_syntax_character");
+        trace!("eat_syntax_character {:?}", self.current(),);
         if let Some(ch) = self.chars.peek() {
             if Self::is_syntax_ch(*ch) {
                 self.state.last_int_value = Some((*ch).into());
@@ -653,7 +649,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_regex_unicode_escape_sequence(&mut self) -> Result<bool, Error> {
-        trace!("eat_regex_unicode_escape_sequence");
+        trace!("eat_regex_unicode_escape_sequence {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('u') {
             if self.eat_fixed_hex_digits(4) {
@@ -696,7 +692,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_character_class(&mut self) -> Result<bool, Error> {
-        trace!("eat_character_class");
+        trace!("eat_character_class {:?}", self.current(),);
         if self.eat('[') {
             self.eat('^');
             self.class_ranges()?;
@@ -711,7 +707,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn class_ranges(&mut self) -> Result<(), Error> {
-        trace!("class_ranges");
+        trace!("class_ranges {:?}", self.current(),);
         while self.eat_class_atom()? {
             let left = self.state.last_int_value;
             if self.eat('-') && self.eat_class_atom()? {
@@ -736,7 +732,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_class_atom(&mut self) -> Result<bool, Error> {
-        trace!("eat_class_atom");
+        trace!("eat_class_atom {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('\\') {
             if self.eat_class_escape()? {
@@ -763,7 +759,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_class_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_class_escape");
+        trace!("eat_class_escape {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('b') {
             self.state.last_int_value = Some(0x08);
@@ -784,7 +780,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_class_control_letter(&mut self) -> bool {
-        trace!("eat_class_control_letter");
+        trace!("eat_class_control_letter {:?}", self.current(),);
         if let Some(ch) = self.chars.peek() {
             if ch.is_digit(10) || *ch == '_' {
                 let n: u32 = (*ch).into();
@@ -797,7 +793,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_k_group_name(&mut self) -> Result<bool, Error> {
-        trace!("eat_k_group_name");
+        trace!("eat_k_group_name {:?}", self.current(),);
         if self.eat('k') {
             if self.eat_group_name()? {
                 if let Some(name) = self.state.last_string_value {
@@ -811,7 +807,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_group_name(&mut self) -> Result<bool, Error> {
-        trace!("eat_group_name");
+        trace!("eat_group_name {:?}", self.current(),);
         self.state.last_string_value = None;
         if self.eat('<') {
             if self.eat_regex_identifier_name()? && self.eat('>') {
@@ -823,7 +819,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_regex_identifier_name(&mut self) -> Result<bool, Error> {
-        trace!("eat_regex_identifier_name");
+        trace!("eat_regex_identifier_name {:?}", self.current(),);
         let start = self.state.pos;
         self.state.last_string_value = None;
         if self.eat_ident_start()? {
@@ -835,7 +831,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_ident_start(&mut self) -> Result<bool, Error> {
-        trace!("eat_ident_start");
+        trace!("eat_ident_start {:?}", self.current(),);
         let start = self.state.pos;
         self.state.last_string_value = None;
         let mut ch = if let Some(ch) = self.chars.peek() {
@@ -860,7 +856,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_ident_part(&mut self) -> Result<bool, Error> {
-        trace!("eat_ident_part");
+        trace!("eat_ident_part {:?}", self.current(),);
         let start = self.state.pos;
         let mut ch = if let Some(ch) = self.chars.peek() {
             *ch
@@ -884,7 +880,6 @@ impl<'a> RegexParser<'a> {
     }
 
     fn is_id_start(ch: char) -> bool {
-        trace!("is_id_start {:?}", ch);
         (ch >= 'A' && ch <= 'Z')
             || (ch >= 'a' && ch <= 'z')
             || ch == '$'
@@ -893,7 +888,6 @@ impl<'a> RegexParser<'a> {
     }
 
     fn is_id_continue(ch: char) -> bool {
-        trace!("is_id_continue {:?}", ch);
         (ch >= 'A' && ch <= 'Z')
             || (ch >= 'a' && ch <= 'z')
             || (ch >= '0' && ch <= '9')
@@ -903,7 +897,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_uncapturing_group(&mut self) -> Result<bool, Error> {
-        trace!("eat_uncapturing_group");
+        trace!("eat_uncapturing_group {:?}", self.current(),);
         let start = self.state.pos;
         if self.eat('(') {
             if self.eat('?') && self.eat(':') {
@@ -919,7 +913,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_capturing_group(&mut self) -> Result<bool, Error> {
-        trace!("eat_capturing_group");
+        trace!("eat_capturing_group {:?}", self.current(),);
         if self.eat('(') {
             self.group_specifier()?;
             self.disjunction()?;
@@ -935,7 +929,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn group_specifier(&mut self) -> Result<(), Error> {
-        trace!("group_specifier");
+        trace!("group_specifier {:?}", self.current(),);
         if self.eat('?') {
             if self.eat_group_name()? {
                 if let Some(name) = self.state.last_string_value {
@@ -952,7 +946,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_assertion(&mut self) -> Result<bool, Error> {
-        trace!("eat_assertion");
+        trace!("eat_assertion {:?}", self.current(),);
         let start = self.state.pos;
         self.state.last_assert_is_quant = false;
         if self.eat('^') || self.eat('$') {
@@ -980,7 +974,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_digits(&mut self, radix: u32) -> bool {
-        trace!("eat_digits");
+        trace!("eat_digits {:?}", self.current(),);
         let start = self.state.pos;
         while let Some(next) = self.chars.peek() {
             if let Some(n) = next.to_digit(radix) {
@@ -996,7 +990,6 @@ impl<'a> RegexParser<'a> {
 
     fn eat(&mut self, ch: char) -> bool {
         if let Some(next) = self.chars.peek() {
-            trace!("eat, {:?} {:?}", next, ch);
             if *next == ch {
                 self.advance();
                 return true;
@@ -1006,14 +999,12 @@ impl<'a> RegexParser<'a> {
     }
 
     fn advance(&mut self) {
-        trace!("advance, {}", self.state.pos);
         if let Some(ch) = self.chars.next() {
             self.state.pos += ch.len_utf8();
         }
     }
 
     fn reset_to(&mut self, idx: usize) {
-        trace!("reset_to {}", idx);
         let remaining = &self.pattern[idx..];
         self.chars = remaining.chars().peekable();
         self.state.pos = idx;
