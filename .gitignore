@@ -1,3 +1,7 @@
 /target
 **/*.rs.bk
 Cargo.lock
+/.vscode
+*.log
+*.js
+/node_modules
