@@ -436,7 +436,10 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_lone_unicode_property_name_or_value(&mut self) -> bool {
-        trace!("eat_lone_unicode_property_name_or_value {:?}", self.current(),);
+        trace!(
+            "eat_lone_unicode_property_name_or_value {:?}",
+            self.current(),
+        );
         self.eat_unicode_property_value()
     }
 
