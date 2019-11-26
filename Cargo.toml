@@ -1,6 +1,6 @@
 [package]
 name = "res-regex"
-version = "0.1.0"
+version = "0.1.0-beta.1"
 authors = ["rfm <r@robertmasen.pizza>"]
 edition = "2018"
 

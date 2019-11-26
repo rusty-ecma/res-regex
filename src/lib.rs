@@ -28,7 +28,6 @@ pub struct RegexParser<'a> {
     pattern: &'a str,
     chars: Peekable<Chars<'a>>,
     flag_str: &'a str,
-    flags: RegExFlags,
     state: State<'a>,
 }
 
@@ -68,7 +67,6 @@ impl<'a> RegexParser<'a> {
             flag_str,
             chars: pattern.chars().peekable(),
             state: State::new(pattern.len(), flags.unicode),
-            flags,
         })
     }
 
@@ -267,6 +265,8 @@ impl<'a> RegexParser<'a> {
         while let Some(next) = self.chars.peek() {
             if !Self::is_syntax_ch(*next) {
                 self.advance();
+            } else {
+                break;
             }
         }
         self.state.pos != start
@@ -338,27 +338,18 @@ impl<'a> RegexParser<'a> {
 
     fn eat_decimal_escape(&mut self) -> bool {
         trace!("eat_decimal_escape {:?}", self.current(),);
-        self.state.last_int_value = Some(0);
-        if let Some(next) = self.chars.peek() {
-            if *next >= '1' && *next <= '9' {
-                let n: u32 = (*next).into();
-                let last_int_value = self.state.last_int_value.unwrap_or(0);
-                self.state.last_int_value = Some(10 * last_int_value + n);
-                self.advance();
-                while let Some(next) = self.chars.peek() {
-                    if *next >= '1' && *next <= '9' {
-                        let n: u32 = (*next).into();
-                        let last_int_value = self.state.last_int_value.unwrap_or(0);
-                        self.state.last_int_value = Some(10 * last_int_value + n);
-                        self.advance();
-                    } else {
-                        break;
-                    }
-                }
-                return true;
+        let start = self.state.pos;
+        let mut last_int_value = 0;
+        while let Some(next) = self.chars.peek() {
+            if let Some(n) = next.to_digit(10) {
+                last_int_value = 10 * last_int_value + n;
+                self.advance()
+            } else {
+                break;
             }
         }
-        false
+        self.state.last_int_value = Some(last_int_value);
+        self.state.pos != start
     }
 
     fn eat_character_class_escape(&mut self) -> Result<bool, Error> {
@@ -1139,9 +1130,42 @@ mod tests {
     use super::*;
     #[test]
     fn lots_of_regexes() {
+        run_test("/asdf|fdsa/g").unwrap();
+    }
+    #[test]
+    #[should_panic = "Invalid escape"]
+    fn decimal_escape_with_u() {
+        run_test(r"/\1/u").unwrap()
+    }
+
+    #[test]
+    #[should_panic = "invalid flag"]
+    fn invalid_regex_flag() {
+        run_test("/./G").unwrap();
+    }
+
+    #[test]
+    #[should_panic = "Nothing to repeat"]
+    fn bad_look_behind() {
+        run_test(r"/.(?<=.)?/").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_quant() {
+        run_test(r"/{2}/").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn id_continue_u() {
+        run_test(r"/\M/u").unwrap();
+    }
+
+    fn run_test(regex: &str) -> Result<(), Error> {
         let _ = pretty_env_logger::try_init();
-        let simple = "/asdf|fdsa/g";
-        let mut parser = RegexParser::new(simple).expect("unable to create parser");
-        parser.parse().expect("failed to parse");
+        let mut parser = RegexParser::new(regex)?;
+        parser.parse()?;
+        Ok(())
     }
 }
