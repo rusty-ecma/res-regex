@@ -277,7 +277,7 @@ impl<'a> RegexParser<'a> {
             || ch >= '(' && ch <= '+'
             || ch == '.'
             || ch == '?'
-            || ch >= '[' && ch <= ']'
+            || ch >= '[' && ch <= '^'
             || ch >= '{' && ch <= '}'
     }
 
@@ -294,7 +294,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_atom_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_atom_escape {:?}", self.current(),);
+        trace!("eat_atom_escape {}",self.state.u, );
         if self.eat_back_ref()
             || self.eat_character_class_escape()?
             || self.eat_character_escape()?
@@ -302,13 +302,16 @@ impl<'a> RegexParser<'a> {
         {
             return Ok(true);
         }
+        trace!("previous check failed, {}", self.state.u);
         if self.state.u {
-            if let Some(next) = self.chars.peek() {
+            trace!("previous all failed, with unicode flag");
+            if let Some(next) = self.current() {
                 if *next == 'c' {
                     return Err(Error::new(self.state.pos, "Invalid unicode escape"));
                 }
-                return Err(Error::new(self.state.pos, "Invalid escape"));
             }
+            trace!("returning error");
+            return Err(Error::new(self.state.pos, "Invalid escape"));
         }
         Ok(false)
     }
@@ -616,6 +619,7 @@ impl<'a> RegexParser<'a> {
                 self.state.last_int_value = Some(0x2f);
                 return true;
             }
+            return false;
         }
         if let Some(ch) = self.chars.peek() {
             if *ch != 'c' && (!self.state.n || *ch != 'k') {
@@ -1160,6 +1164,12 @@ mod tests {
     #[should_panic]
     fn id_continue_u() {
         run_test(r"/\M/u").unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn cant_start_with_star() {
+        run_test("/*/").unwrap();
     }
 
     fn run_test(regex: &str) -> Result<(), Error> {
