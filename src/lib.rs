@@ -2,6 +2,9 @@ use log::trace;
 use ress::prelude::RegEx;
 use std::{iter::Peekable, str::Chars};
 
+mod unicode_tables;
+mod unicode;
+
 #[derive(Debug)]
 pub struct Error {
     pub msg: String,
@@ -191,10 +194,8 @@ impl<'a> RegexParser<'a> {
     fn eat_term(&mut self) -> Result<bool, Error> {
         trace!("eat_term {:?}", self.current(),);
         if self.eat_assertion()? {
-            if self.state.last_assert_is_quant && self.eat_quantifier(false)? {
-                if self.state.n {
-                    return Err(Error::new(self.state.pos, "Invalid quantifier"));
-                }
+            if self.state.last_assert_is_quant && self.eat_quantifier(false)? && self.state.n {
+                return Err(Error::new(self.state.pos, "Invalid quantifier"));
             }
             return Ok(true);
         }
@@ -294,7 +295,7 @@ impl<'a> RegexParser<'a> {
     }
 
     fn eat_atom_escape(&mut self) -> Result<bool, Error> {
-        trace!("eat_atom_escape {}",self.state.u, );
+        trace!("eat_atom_escape {}", self.state.u,);
         if self.eat_back_ref()
             || self.eat_character_class_escape()?
             || self.eat_character_escape()?

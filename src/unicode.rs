@@ -1,103 +1,23 @@
-pub static BINARY_PROPS: &[&str] = &[
-    "ASCII",
-    "ASCII_Hex_Digit",
-    "AHex",
-    "Alphabetic",
-    "Alpha",
-    "Any",
-    "Assigned",
-    "Bidi_Control",
-    "Bidi_C",
-    "Bidi_Mirrored",
-    "Bidi_M",
-    "Case_Ignorable",
-    "CI",
-    "Cased",
-    "Changes_When_Casefolded",
-    "CWCF",
-    "Changes_When_Casemapped",
-    "CWCM",
-    "Changes_When_Lowercased",
-    "CWL",
-    "Changes_When_NFKC_Casefolded",
-    "CWKCF",
-    "Changes_When_Titlecased",
-    "CWT",
-    "Changes_When_Uppercased",
-    "CWU",
-    "Dash",
-    "Default_Ignorable_Code_Point",
-    "DI",
-    "Deprecated",
-    "Dep",
-    "Diacritic",
-    "Dia",
-    "Emoji",
-    "Emoji_Component",
-    "Emoji_Modifier",
-    "Emoji_Modifier_Base",
-    "Emoji_Presentation",
-    "Extender",
-    "Ext",
-    "Grapheme_Base",
-    "Gr_Base",
-    "Grapheme_Extend",
-    "Gr_Ext",
-    "Hex_Digit",
-    "Hex",
-    "IDS_Binary_Operator",
-    "IDSB",
-    "IDS_Trinary_Operator",
-    "IDST",
-    "ID_Continue",
-    "IDC",
-    "ID_Start",
-    "IDS",
-    "Ideographic",
-    "Ideo",
-    "Join_Control",
-    "Join_C",
-    "Logical_Order_Exception",
-    "LOE",
-    "Lowercase",
-    "Lower",
-    "Math",
-    "Noncharacter_Code_Point",
-    "NChar",
-    "Pattern_Syntax",
-    "Pat_Syn",
-    "Pattern_White_Space",
-    "Pat_WS",
-    "Quotation_Mark",
-    "QMark",
-    "Radical",
-    "Regional_Indicator",
-    "RI",
-    "Sentence_Terminal",
-    "STerm",
-    "Soft_Dotted",
-    "SD",
-    "Terminal_Punctuation",
-    "Term",
-    "Unified_Ideograph",
-    "UIdeo",
-    "Uppercase",
-    "Upper",
-    "Variation_Selector",
-    "VS",
-    "White_Space",
-    "space",
-    "XID_Continue",
-    "XIDC",
-    "XID_Start",
-    "XIDS",
-    "Extended_Pictographic"
-];
 
-pub fn is_binary_prop(s: &str) -> bool {
-    BINARY_PROPS.binary_search(&s).is_ok()
-}
-
-pub fn is_non_binary_prop(s: &str) -> bool {
-    unimplemented!()
+use crate::unicode_tables::general_category::BY_NAME;
+use std::cmp::Ordering;
+pub fn validate_name_value(name: &str, value: &str) -> bool {
+    let list = if let Ok(idx) = BY_NAME.binary_search_by(|(n, _)| {
+        name.cmp(n)
+    }) {
+        &BY_NAME[idx].1
+    } else {
+        return false;
+    };
+    value.chars().all(|c| {
+        list.binary_search_by(|(lhs, rhs)| {
+            let first = lhs.cmp(&c);
+            match first {
+                Ordering::Equal
+                | Ordering::Less => return first,
+                _ => (),
+            }
+            rhs.cmp(&c)
+        }).is_ok()
+    })
 }
