@@ -1314,10 +1314,7 @@ mod tests {
     }
     #[test]
     fn unicode_name_or_value() {
-        for value in unicode_tables::general_category::GC {
-            run_test(&format!(r"/\p{{{}}}/u", value)).unwrap();
-        }
-        for value in unicode_tables::binary_props::BINARY {
+        for value in unicode_tables::GC_AND_BP {
             run_test(&format!(r"/\p{{{}}}/u", value)).unwrap();
         }
     }

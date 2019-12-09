@@ -1,4 +1,4 @@
-use crate::unicode_tables::{binary_props::BINARY, general_category::GC, script_values::SCRIPT};
+use crate::unicode_tables::{general_category::GC, script_values::SCRIPT, GC_AND_BP};
 
 /// Validate a `LoneUnicodePropertyNameOrValue`
 /// is a valid name or value
@@ -12,7 +12,7 @@ use crate::unicode_tables::{binary_props::BINARY, general_category::GC, script_v
 /// names and aliases and then the Binary Property
 /// names and aliases
 pub fn validate_name_or_value(name: &str) -> bool {
-    GC.binary_search(&name).is_ok() || BINARY.binary_search(&name).is_ok()
+    GC_AND_BP.binary_search(&name).is_ok()
 }
 /// Validate a `UnicodePropertyName` and `UnicodePropertyValue`
 /// are correct
@@ -72,10 +72,7 @@ mod test {
     }
     #[test]
     fn name_or_value() {
-        for value in GC {
-            assert!(validate_name_or_value(value));
-        }
-        for value in BINARY {
+        for value in GC_AND_BP {
             assert!(validate_name_or_value(value));
         }
         assert!(!validate_name_or_value("junk"));
