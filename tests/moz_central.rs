@@ -5,7 +5,7 @@ fn moz_central() {
     for (i, regex) in REGEXES.iter().enumerate() {
         let mut parser = RegexParser::new(regex).expect("unable to contruct the parser");
         parser
-            .parse()
+            .validate()
             .expect(&format!("{}: failed to parse {}", i, regex));
     }
 }

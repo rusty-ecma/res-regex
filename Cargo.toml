@@ -1,6 +1,6 @@
 [package]
 name = "res-regex"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 authors = ["rfm <r@robertmasen.pizza>"]
 edition = "2018"
 description = "A js-regex validator"
@@ -12,7 +12,6 @@ license = "MIT"
 ress = "0"
 log = "0"
 unic-ucd-ident = { version = "0.9.0", default_features = false, features = ["id"] }
-unic-char = "0.9.0"
 
 [dev-dependencies]
 pretty_env_logger = "0"
