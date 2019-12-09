@@ -444,24 +444,50 @@ impl<'a> RegexParser<'a> {
         name: &Option<&'a str>,
         value: &Option<&'a str>,
     ) -> Result<(), Error> {
-        Err(
-            Error {
-                idx: self.state.pos,
-                msg: format!("Unable to validate unicode property name and value ({:?} and {:?}), this is not yet implemented", name, value),
+        if let (Some(name), Some(value)) = (name, value) {
+            if !unicode::validate_name_and_value(name, value) {
+                Err(
+                    Error {
+                        idx: self.state.pos,
+                        msg: format!("Unable to validate unicode property name and value ({:?} and {:?})", name, value),
+                    }
+                )
+            } else {
+                Ok(())
             }
-        )
+        } else {
+            Err(
+                Error {
+                    idx: self.state.pos,
+                    msg: "Invalid unicode property name & value provided".to_string()
+                }
+            )
+        }
     }
 
     fn validate_unicode_property_name_or_value(
         &self,
         name_or_value: &Option<&'a str>,
     ) -> Result<(), Error> {
-        Err(
-            Error {
-                idx: self.state.pos,
-                msg: format!("Unable to validate unicode property name or value ({:?}), this is not yet implemented", name_or_value),
+        if let Some(name) = name_or_value {
+            if !unicode::validate_name_or_value(name) {
+                Err(
+                    Error {
+                        idx: self.state.pos,
+                        msg: format!("Unable to validate unicode property name or value ({:?})", name_or_value),
+                    }
+                )
+            } else {
+                Ok(())
             }
-        )
+        } else {
+            Err(
+                Error {
+                    idx: self.state.pos,
+                    msg: "Invalid unicoe property name or value".to_string()
+                }
+            )
+        }
     }
 
     fn is_unicode_property_name_character(ch: char) -> bool {

@@ -1,23 +1,39 @@
 
-use crate::unicode_tables::general_category::BY_NAME;
-use std::cmp::Ordering;
-pub fn validate_name_value(name: &str, value: &str) -> bool {
-    let list = if let Ok(idx) = BY_NAME.binary_search_by(|(n, _)| {
-        name.cmp(n)
-    }) {
-        &BY_NAME[idx].1
+use crate::unicode_tables::{
+    general_category::GC,
+    script_values::SCRIPT,
+    binary_props::BINARY,
+};
+
+pub fn validate_name_or_value(name: &str) -> bool {
+    if let Ok(_) = GC.binary_search(&name) {
+        true
+    } else if let Ok(_) = BINARY.binary_search(&name) {
+        true
     } else {
-        return false;
-    };
-    value.chars().all(|c| {
-        list.binary_search_by(|(lhs, rhs)| {
-            let first = lhs.cmp(&c);
-            match first {
-                Ordering::Equal
-                | Ordering::Less => return first,
-                _ => (),
-            }
-            rhs.cmp(&c)
-        }).is_ok()
-    })
+        false
+    }
+}
+
+pub fn validate_name_and_value(name: &str, value: &str) -> bool {
+    if let Some(set) = validate_name(name) {
+        set.binary_search(&value).is_ok()
+    } else {
+        false
+    }
+}
+
+
+pub fn validate_name(name: &str) -> Option<&[&str]> {
+    if name == "General_Category" || name == "gc" {
+        Some(GC)
+    } else if name == "Script" || name == "sc" || name == "Script_Extensions" || "scx" {
+        Some(SCRIPT)
+    } else {
+        None
+    }
+}
+
+pub fn validate_value(value: &str) -> bool {
+    SCRIPT.binary_search(&value).is_ok()
 }
