@@ -1198,6 +1198,48 @@ mod tests {
         run_test("/*/").unwrap();
     }
 
+    #[test]
+    fn unicode_name_and_value() {
+        for value in unicode_tables::general_category::GC {
+            run_test(&format!(r"/\p{{General_Category={}}}/u", value))
+                .expect(&format!("failed at General_category={}", value));
+            run_test(&format!(r"/\p{{gc={}}}/u", value)).expect(&format!("failed at gc={}", value));
+        }
+        for value in unicode_tables::script_values::SCRIPT {
+            run_test(&format!(r"/\p{{Script={}}}/u", value))
+                .expect(&format!("failed at Script={}", value));
+            run_test(&format!(r"/\p{{sc={}}}/u", value)).expect(&format!("failed at sc={}", value));
+            run_test(&format!(r"/\p{{Script_Extensions={}}}/u", value))
+                .expect(&format!("failed at Script_Extensions={}", value));
+            run_test(&format!(r"/\p{{scx={}}}/u", value))
+                .expect(&format!("failed at scx={}", value));
+        }
+    }
+    #[test]
+    #[should_panic]
+    fn unicode_name_and_value_bad_name() {
+        run_test(r"/\p{junk=Greek}/u").unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn unicode_name_and_value_bad_value() {
+        run_test(r"/\p{General_Category=Geek}/u").unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn unicode_name_or_value_bad_value() {
+        run_test(r"/\p{junk}/u").unwrap();
+    }
+    #[test]
+    fn unicode_name_or_value() {
+        for value in unicode_tables::general_category::GC {
+            run_test(&format!(r"/\p{{{}}}/u", value)).unwrap();
+        }
+        for value in unicode_tables::binary_props::BINARY {
+            run_test(&format!(r"/\p{{{}}}/u", value)).unwrap();
+        }
+    }
+
     fn run_test(regex: &str) -> Result<(), Error> {
         let _ = pretty_env_logger::try_init();
         let mut parser = RegexParser::new(regex)?;
