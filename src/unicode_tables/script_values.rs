@@ -1,3 +1,5 @@
+/// Ordered list of the unicode Script
+/// and Script_Extensions names and aliases
 pub static SCRIPT: &[&str] = &[
     "Adlam",
     "Adlm",

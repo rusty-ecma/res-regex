@@ -1,3 +1,5 @@
+/// Ordered list of the unicode Binary Property
+/// names and aliases
 pub static BINARY: &[&str] = &[
     "AHex",
     "ASCIIASCII",

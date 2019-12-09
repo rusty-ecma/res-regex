@@ -1,3 +1,5 @@
+/// Ordered list of the unicode General_Category
+/// names and aliases
 pub static GC: &[&str] = &[
     "C",
     "Cased_Letter",
