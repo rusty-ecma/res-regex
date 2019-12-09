@@ -12,13 +12,7 @@ use crate::unicode_tables::{binary_props::BINARY, general_category::GC, script_v
 /// names and aliases and then the Binary Property
 /// names and aliases
 pub fn validate_name_or_value(name: &str) -> bool {
-    if let Ok(_) = GC.binary_search(&name) {
-        true
-    } else if let Ok(_) = BINARY.binary_search(&name) {
-        true
-    } else {
-        false
-    }
+    GC.binary_search(&name).is_ok() || BINARY.binary_search(&name).is_ok()
 }
 /// Validate a `UnicodePropertyName` and `UnicodePropertyValue`
 /// are correct

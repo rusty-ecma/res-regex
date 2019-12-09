@@ -1,5 +1,4 @@
 use log::trace;
-use ress::prelude::RegEx;
 use std::{iter::Peekable, str::Chars};
 
 mod unicode;
@@ -31,7 +30,6 @@ impl Error {
 pub struct RegexParser<'a> {
     pattern: &'a str,
     chars: Peekable<Chars<'a>>,
-    flag_str: &'a str,
     state: State<'a>,
 }
 
@@ -57,18 +55,17 @@ impl<'a> RegexParser<'a> {
         } else {
             return Err(Error::new(0, "Invalid regular expression"));
         };
-        let (flags, flag_str) = if let Some(flag_str) = js.get(pat_end_idx + 1..) {
+        let flags = if let Some(flag_str) = js.get(pat_end_idx + 1..) {
             let mut flags = RegExFlags::default();
             for (i, c) in flag_str.chars().enumerate() {
                 flags.add_flag(c, pat_end_idx + i + 1)?;
             }
-            (flags, flag_str)
+            flags
         } else {
             return Err(Error::new(pat_end_idx, "invalid flags"));
         };
         Ok(Self {
             pattern,
-            flag_str,
             chars: pattern.chars().peekable(),
             state: State::new(pattern.len(), flags.unicode),
         })
@@ -1328,7 +1325,7 @@ mod tests {
     fn run_test(regex: &str) -> Result<(), Error> {
         let _ = pretty_env_logger::try_init();
         let mut parser = RegexParser::new(regex)?;
-        parser.parse()?;
+        parser.validate()?;
         Ok(())
     }
 }
