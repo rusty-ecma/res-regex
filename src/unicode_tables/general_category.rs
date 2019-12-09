@@ -1,5 +1,3 @@
-
-
 pub static GC: &[&str] = &[
     "C",
     "Cased_Letter",

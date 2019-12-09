@@ -1,9 +1,4 @@
-
-use crate::unicode_tables::{
-    general_category::GC,
-    script_values::SCRIPT,
-    binary_props::BINARY,
-};
+use crate::unicode_tables::{binary_props::BINARY, general_category::GC, script_values::SCRIPT};
 
 pub fn validate_name_or_value(name: &str) -> bool {
     if let Ok(_) = GC.binary_search(&name) {
@@ -22,7 +17,6 @@ pub fn validate_name_and_value(name: &str, value: &str) -> bool {
         false
     }
 }
-
 
 pub fn validate_name(name: &str) -> Option<&[&str]> {
     if name == "General_Category" || name == "gc" {

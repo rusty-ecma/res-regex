@@ -2,8 +2,8 @@ use log::trace;
 use ress::prelude::RegEx;
 use std::{iter::Peekable, str::Chars};
 
-mod unicode_tables;
 mod unicode;
+mod unicode_tables;
 
 #[derive(Debug)]
 pub struct Error {
@@ -446,22 +446,21 @@ impl<'a> RegexParser<'a> {
     ) -> Result<(), Error> {
         if let (Some(name), Some(value)) = (name, value) {
             if !unicode::validate_name_and_value(name, value) {
-                Err(
-                    Error {
-                        idx: self.state.pos,
-                        msg: format!("Unable to validate unicode property name and value ({:?} and {:?})", name, value),
-                    }
-                )
+                Err(Error {
+                    idx: self.state.pos,
+                    msg: format!(
+                        "Unable to validate unicode property name and value ({:?} and {:?})",
+                        name, value
+                    ),
+                })
             } else {
                 Ok(())
             }
         } else {
-            Err(
-                Error {
-                    idx: self.state.pos,
-                    msg: "Invalid unicode property name & value provided".to_string()
-                }
-            )
+            Err(Error {
+                idx: self.state.pos,
+                msg: "Invalid unicode property name & value provided".to_string(),
+            })
         }
     }
 
@@ -471,22 +470,21 @@ impl<'a> RegexParser<'a> {
     ) -> Result<(), Error> {
         if let Some(name) = name_or_value {
             if !unicode::validate_name_or_value(name) {
-                Err(
-                    Error {
-                        idx: self.state.pos,
-                        msg: format!("Unable to validate unicode property name or value ({:?})", name_or_value),
-                    }
-                )
+                Err(Error {
+                    idx: self.state.pos,
+                    msg: format!(
+                        "Unable to validate unicode property name or value ({:?})",
+                        name_or_value
+                    ),
+                })
             } else {
                 Ok(())
             }
         } else {
-            Err(
-                Error {
-                    idx: self.state.pos,
-                    msg: "Invalid unicoe property name or value".to_string()
-                }
-            )
+            Err(Error {
+                idx: self.state.pos,
+                msg: "Invalid unicoe property name or value".to_string(),
+            })
         }
     }
 
