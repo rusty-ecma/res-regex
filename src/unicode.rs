@@ -2,12 +2,12 @@ use crate::unicode_tables::{binary_props::BINARY, general_category::GC, script_v
 
 /// Validate a `LoneUnicodePropertyNameOrValue`
 /// is a valid name or value
-/// 
+///
 /// ex:
 /// ```js
 /// let re = /\p{White_Space}\p{Alphabetic}/;
 /// ```
-/// 
+///
 /// This function will first search the General_Category
 /// names and aliases and then the Binary Property
 /// names and aliases
@@ -22,13 +22,13 @@ pub fn validate_name_or_value(name: &str) -> bool {
 }
 /// Validate a `UnicodePropertyName` and `UnicodePropertyValue`
 /// are correct
-/// 
-/// 
+///
+///
 /// ex:
 /// ```js
 /// let re = /\p{Script=Greek}\p{gc=Lm}/
 /// ```
-/// 
+///
 /// valid names include `General_Category`, `gc`, `Script`,
 /// `Script_Extensions`, `sc` and `scx`
 ///  any other names will return false
