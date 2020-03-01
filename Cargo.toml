@@ -1,10 +1,15 @@
 [package]
 name = "res-regex"
 version = "0.1.0"
-authors = ["rfm <r@robertmasen.pizza>"]
 edition = "2018"
 description = "A js-regex validator"
+authors = ["Robert Masen <r@robertmasen.pizza>"]
+description = "A sanner/tokenizer for JS files"
+keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
+categories = ["parsing", "text-processing", "web-programming"]
 license = "MIT"
+repository = "https://github.com/rusty-ecma/res-regex"
+readme = "./README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
