@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2018"
 description = "A js-regex validator"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
-description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
 categories = ["parsing", "text-processing", "web-programming"]
 license = "MIT"
