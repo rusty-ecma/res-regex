@@ -1043,7 +1043,7 @@ impl<'a> RegexParser<'a> {
                         return Err(Error::new(self.state.pos, "Duplicate capture group name"));
                     } else {
                         self.state.group_names.push(name);
-                        return Ok(())
+                        return Ok(());
                     }
                 }
             }
