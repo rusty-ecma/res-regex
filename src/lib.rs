@@ -1043,6 +1043,7 @@ impl<'a> RegexParser<'a> {
                         return Err(Error::new(self.state.pos, "Duplicate capture group name"));
                     } else {
                         self.state.group_names.push(name);
+                        return Ok(())
                     }
                 }
             }
@@ -1317,6 +1318,11 @@ mod tests {
         for value in unicode_tables::GC_AND_BP {
             run_test(&format!(r"/\p{{{}}}/u", value)).unwrap();
         }
+    }
+
+    #[test]
+    fn named_group() {
+        run_test(r"/(?<x>a)|b/").unwrap();
     }
 
     fn run_test(regex: &str) -> Result<(), Error> {

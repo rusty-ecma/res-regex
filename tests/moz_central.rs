@@ -702,4 +702,5 @@ static REGEXES: &[&str] = &[
     r#"/VAL/g"#,
     r#"/.*/"#,
     r#"/debugger/"#,
+    r#"/(?<x>a)|b/"#,
 ];
