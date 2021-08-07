@@ -582,13 +582,15 @@ impl<'a> RegexParser<'a> {
         trace!("eat_control_escape {:?}", self.current(),);
         if let Some(ch) = self.chars.peek() {
             match ch {
-                't' | 'n' | 'v' | 'f' | 'r' => {
-                    self.state.last_int_value = Some((*ch).into());
-                    self.advance();
-                    return true;
-                }
+                't' => self.state.last_int_value = Some(9),
+                'n' => self.state.last_int_value = Some(10),
+                'v' => self.state.last_int_value = Some(11),
+                'f' => self.state.last_int_value = Some(12),
+                'r' => self.state.last_int_value = Some(13),
                 _ => return false,
             }
+            self.advance();
+            return true;
         }
         false
     }
@@ -1323,6 +1325,11 @@ mod tests {
     #[test]
     fn named_group() {
         run_test(r"/(?<x>a)|b/").unwrap();
+    }
+
+    #[test]
+    fn control_range() {
+        run_test(r"/[\t-\r]/").unwrap();
     }
 
     fn run_test(regex: &str) -> Result<(), Error> {
