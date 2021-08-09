@@ -1,6 +1,6 @@
 [package]
 name = "res-regex"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2018"
 description = "A js-regex validator"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
