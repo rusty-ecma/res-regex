@@ -1169,6 +1169,7 @@ struct RegExFlags {
     unicode: bool,
     global: bool,
     sticky: bool,
+    has_indicies: bool,
 }
 
 impl Default for RegExFlags {
@@ -1180,6 +1181,7 @@ impl Default for RegExFlags {
             unicode: false,
             global: false,
             sticky: false,
+            has_indicies: false,
         }
     }
 }
@@ -1232,6 +1234,14 @@ impl RegExFlags {
                     Err(Error::new(pos, "duplicate y flag"))
                 } else {
                     self.sticky = true;
+                    Ok(())
+                }
+            }
+            'd' => {
+                if self.has_indicies {
+                    Err(Error::new(pos, "duplicate d flag"))
+                } else {
+                    self.has_indicies = true;
                     Ok(())
                 }
             }
@@ -1330,6 +1340,24 @@ mod tests {
     #[test]
     fn control_range() {
         run_test(r"/[\t-\r]/").unwrap();
+    }
+
+    #[test]
+    fn known_flags() {
+        let flags = &['d', 'g', 'i', 'm', 's', 'u', 'y'];
+        for flag in flags {
+            run_test(&format!("/.+/{}", flag)).unwrap();
+        }
+        let all: String = flags.iter().collect();
+        run_test(&format!("/.+/{}", all)).unwrap();
+    }
+
+    #[test]
+    fn duplicate_known_flags() {
+        let flags = &['d', 'g', 'i', 'm', 's', 'u', 'y'];
+        for flag in flags {
+            run_test(&format!("/.+/{0}{}0", flag)).unwrap_err();
+        }
     }
 
     fn run_test(regex: &str) -> Result<(), Error> {
