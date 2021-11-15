@@ -1085,12 +1085,17 @@ impl<'a> RegexParser<'a> {
     fn eat_digits(&mut self, radix: u32) -> bool {
         trace!("eat_digits {:?}", self.current(),);
         let start = self.state.pos;
+        self.state.last_int_value = Some(0);
         while let Some(next) = self.chars.peek() {
+            log::debug!("next digit: {}", next);
             if let Some(n) = next.to_digit(radix) {
+                log::debug!("digit as u32: {}", n);
                 let last_int_value = self.state.last_int_value.unwrap_or(0);
+                log::debug!("last_int_value: {}", last_int_value);
                 self.state.last_int_value = Some(radix * last_int_value + n);
                 self.advance();
             } else {
+                log::debug!("next not digit");
                 break;
             }
         }
@@ -1110,12 +1115,16 @@ impl<'a> RegexParser<'a> {
     fn advance(&mut self) {
         if let Some(ch) = self.chars.next() {
             self.state.pos += ch.len_utf8();
+            log::debug!("adv: {} ({})", ch, self.state.pos);
+        } else {
+            log::debug!("adv at end");
         }
     }
 
     fn reset_to(&mut self, idx: usize) {
         let remaining = &self.pattern[idx..];
         self.chars = remaining.chars().peekable();
+        log::debug!("res: {} ({})", self.chars.peek().unwrap_or(&' '), idx);
         self.state.pos = idx;
     }
 }
@@ -1358,6 +1367,10 @@ mod tests {
         for flag in flags {
             run_test(&format!("/.+/{0}{}0", flag)).unwrap_err();
         }
+    }
+    #[test]
+    fn long_or_sequences() {
+        run_test(r#"/((?:[^BEGHLMOSWYZabcdhmswyz']+)|(?:'(?:[^']|'')*')|(?:G{1,5}|y{1,4}|Y{1,4}|M{1,5}|L{1,5}|w{1,2}|W{1}|d{1,2}|E{1,6}|c{1,6}|a{1,5}|b{1,5}|B{1,5}|h{1,2}|H{1,2}|m{1,2}|s{1,2}|S{1,3}|z{1,4}|Z{1,5}|O{1,4}))([\s\S]*)/"#).unwrap();
     }
 
     fn run_test(regex: &str) -> Result<(), Error> {
